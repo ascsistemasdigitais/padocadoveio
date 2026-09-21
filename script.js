@@ -5,7 +5,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
   getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, 
-  query, orderBy, serverTimestamp, getDoc, getDocs, where, Timestamp, setDoc
+  query, orderBy, serverTimestamp, getDoc, getDocs, where, Timestamp, setDoc, writeBatch
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ==========================================================
@@ -36,6 +36,7 @@ setPersistence(auth, browserLocalPersistence).catch(error => {
 // ==========================================================
 let currentUser = null;
 let isAdmin = false;
+let restauracaoEmAndamento = false;
 let produtos = [];
 let fornecedores = [];
 let vendas = [];
@@ -1194,6 +1195,80 @@ async function exportarBackup() {
 }
 
 async function restaurarBackup() {
+  if (!isAdmin) { alert('Acesso negado.'); return; }
+  if (restauracaoEmAndamento) { alert('Uma restauracao ja esta em andamento.'); return; }
+
+  const input = document.getElementById('backup-arquivo');
+  const arquivo = input?.files?.[0];
+  const mensagem = document.getElementById('backup-msg');
+  const colecoes = ['produtos', 'fornecedores', 'entradas', 'vendas', 'movEstoque', 'auditoria'];
+
+  if (!arquivo) {
+    alert('Selecione o arquivo de backup (.json) antes de restaurar.');
+    return;
+  }
+
+  restauracaoEmAndamento = true;
+  try {
+    const backup = JSON.parse(await arquivo.text());
+    if (backup?.versao !== 1 || typeof backup.aplicacao !== 'string' ||
+        !colecoes.every(nome => Array.isArray(backup[nome]))) {
+      throw new Error('Este arquivo nao e um backup valido deste sistema.');
+    }
+
+    for (const nome of colecoes) {
+      const possuiRegistroInvalido = !backup[nome].every(registro =>
+        registro && typeof registro === 'object' && typeof registro.id === 'string' &&
+        registro.id.length > 0 && !registro.id.includes('/')
+      );
+      if (possuiRegistroInvalido) {
+        throw new Error(`O backup possui um registro invalido em ${nome}.`);
+      }
+    }
+
+    const resumo = colecoes.map(nome => `${backup[nome].length} ${nome}`).join(', ');
+    const confirmar = confirm(
+      `Restaurar este backup? Os dados atuais serao substituidos (${resumo}).\n\n` +
+      'Usuarios, senhas e o caixa em aberto nao serao alterados.'
+    );
+    if (!confirmar) return;
+
+    if (mensagem) mensagem.textContent = 'Restaurando backup... Nao feche esta pagina.';
+    for (const nome of colecoes) {
+      await substituirColecaoDoBackup(nome, backup[nome]);
+    }
+
+    await registrarAuditoria('Backup restaurado', `Arquivo: ${arquivo.name}`);
+    if (mensagem) mensagem.textContent = 'Backup restaurado com sucesso.';
+    input.value = '';
+  } catch (erro) {
+    console.error('Erro ao restaurar backup:', erro);
+    if (mensagem) mensagem.textContent = 'Nao foi possivel restaurar o backup.';
+    alert('Erro ao restaurar backup: ' + erro.message);
+  } finally {
+    restauracaoEmAndamento = false;
+  }
+}
+
+async function substituirColecaoDoBackup(nomeColecao, registros) {
+  const existentes = await getDocs(collection(db, nomeColecao));
+  await executarEmLotes(existentes.docs, 400, (lote, item) => lote.delete(item.ref));
+  await executarEmLotes(registros, 400, (lote, registro) => {
+    const dados = { ...registro };
+    delete dados.id;
+    lote.set(doc(db, nomeColecao, registro.id), dados);
+  });
+}
+
+async function executarEmLotes(itens, tamanhoLote, adicionarOperacao) {
+  for (let inicio = 0; inicio < itens.length; inicio += tamanhoLote) {
+    const lote = writeBatch(db);
+    itens.slice(inicio, inicio + tamanhoLote).forEach(item => adicionarOperacao(lote, item));
+    await lote.commit();
+  }
+}
+
+async function restaurarBackupLegado() {
   if (!isAdmin) { alert('Acesso negado.'); return; }
   alert('Função de restauração ainda não implementada para o Firebase. Use o painel do Firebase para importar dados.');
 }
