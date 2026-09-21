@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Padoca do Véio</title>
+  <link rel="stylesheet" href="login.css">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="side-brand">
+    <div class="brand-content">
+      <div class="brand-icons">
+        <svg viewBox="0 0 64 64" class="icon-cart" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M6 8h6l2.2 33a5 5 0 0 0 5 4.6h24a5 5 0 0 0 5-4.3L52 20H16.2" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="23" cy="54" r="4.4" fill="currentColor"/>
+          <circle cx="42" cy="54" r="4.4" fill="currentColor"/>
+        </svg>
+        <svg viewBox="0 0 64 64" class="icon-store" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 26v26a2 2 0 0 0 2 2h10V38h12v16h10a2 2 0 0 0 2-2V26" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6 16l3.5-8h25L38 16M38 16l3.5-8H58l3.5 8M6 16v6a5 5 0 0 0 10 0v-6M16 16v6a5 5 0 0 0 10 0v-6M26 16v6a5 5 0 0 0 10 0v-6M36 16v6a5 5 0 0 0 10 0v-6M46 16v6a5 5 0 0 0 10 0v-6" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 class="brand-title">PADOCA<br><span> DO VÉIO</span></h1>
+      <div class="brand-rule"></div>
+      <p class="brand-tagline">Pizzas, lanches, pão quentinho e mercado</p>
+      <div class="brand-contact">
+        <div class="contact-line"><span class="ci">📍</span> Rua Francisco José Viana, 00 — Cidade Tiradentes - SP</div>
+        <div class="contact-line"><span class="ci">📞</span> (11) 98331-4013</div>
+        <div class="contact-line"><span class="ci">🌐</span> vendas e gestão em um só lugar</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-form">
+    <div class="form-content">
+      <h2>Bem-vindo ao Sistema</h2>
+      <p class="form-sub">Informe suas credenciais para acessar a plataforma.</p>
+      <form id="login-form" autocomplete="off">
+        <div class="field">
+          <label for="login-email">E-mail</label>
+          <input type="email" id="login-email" placeholder="seu@email.com" required>
+        </div>
+        <div class="field">
+          <label for="login-senha">Senha</label>
+          <div class="senha-wrap">
+            <input type="password" id="login-senha" placeholder="Digite sua senha" required>
+            <button type="button" class="toggle-senha" id="toggle-senha" aria-label="Mostrar senha">👁</button>
+          </div>
+        </div>
+        <div class="row-options">
+          <label class="lembrar"><input type="checkbox" id="login-lembrar"> Lembrar meu e-mail</label>
+          <a href="#" class="esqueci">Esqueci a senha</a>
+        </div>
+        <div id="login-erro" class="login-erro"></div>
+        <button type="submit" class="btn-entrar" id="btn-entrar">→ Entrar</button>
+      </form>
+      <div class="empresa">
+        <a href="https://ascsistemasdigitais.github.io/ascdigitalsistem/" target="_blank" rel="noopener noreferrer">
+            <img src="/logo1.png" alt="ASC Digital" class="logo">
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="login.js"></script>
+</body>
+</html>

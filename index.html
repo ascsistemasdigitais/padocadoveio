@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Padoca Do Véio — PDV e Gestão</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== BARRA DE TÍTULO ===== -->
+<div class="erp-titlebar erp-chrome">
+  <span>PADOCA DO VÉIO - Sistema de Vendas e Gestão - MATRIZ</span>
+  <span class="tb-win">— □ ✕</span>
+</div>
+
+<!-- ===== TOOLBAR ===== -->
+<div class="erp-toolbar erp-chrome">
+  <button class="tb-btn menu-toggle" onclick="alternarMenuLateral()" title="Recolher ou mostrar menu lateral">☰</button>
+  <button class="tb-btn" onclick="irPara('dashboard')" title="Painel">📊</button>
+  <button class="tb-btn" onclick="irPara('usuarios')" title="Usuários">👤</button>
+  <button class="tb-btn" onclick="irPara('fornecedores')" title="Fornecedores">🏭</button>
+  <button class="tb-btn" onclick="irPara('entradas')" title="Entradas">📥</button>
+  <button class="tb-btn" onclick="irPara('produtos')" title="Produtos">🏷️</button>
+  <button class="tb-btn" onclick="irPara('estoque')" title="Estoque">🗃️</button>
+  <button class="tb-btn" onclick="irPara('relatorio-compras')" title="Compras">💰</button>
+  <button class="tb-btn" onclick="irPara('relatorio-vendas')" title="Vendas">💵</button>
+  <button class="tb-btn" onclick="irPara('relatorio-estoque')" title="Estoque $">📊</button>
+  <button class="tb-btn" onclick="irPara('fechamento')" title="Fechamento">🧾</button>
+  <button class="tb-btn" onclick="irPara('pdv')" title="PDV">🛒</button>
+</div>
+
+<div class="erp-body">
+
+  <!-- ===== MENU EM ÁRVORE ===== -->
+  <div class="sidebar erp-chrome">
+    <div class="tree-search">
+      <label>Pesquisar Menus</label>
+      <div class="ts-row">
+        <input type="text" id="tree-busca" oninput="filtrarTree()">
+        <button onclick="expandirTree(true)" title="Expandir tudo">+</button>
+        <button onclick="expandirTree(false)" title="Recolher tudo">−</button>
+      </div>
+    </div>
+
+    <div class="tree">
+      <button class="nav-item leaf tree-item" data-page="dashboard" title="Painel">
+        <span class="tw" style="visibility:hidden">+</span><span class="t-ico">📊</span><span class="nav-label">Painel</span>
+      </button>
+
+      <div class="tree-group">
+        <button class="tree-head" onclick="toggleTreeGroup(this)"><span class="tw">−</span><span class="t-ico">👥</span><span class="t-name">Cadastros</span></button>
+        <div class="tree-children">
+          <button class="nav-item leaf admin-only" data-page="produtos"><span class="folder">📁</span><span class="nav-label">Produtos</span></button>
+          <button class="nav-item leaf admin-only" data-page="fornecedores"><span class="folder">📁</span><span class="nav-label">Fornecedores</span></button>
+          <button class="nav-item leaf admin-only" data-page="usuarios"><span class="folder">📁</span><span class="nav-label">Usuários do Sistema</span></button>
+        </div>
+      </div>
+
+      <div class="tree-group">
+        <button class="tree-head" onclick="toggleTreeGroup(this)"><span class="tw">−</span><span class="t-ico">📦</span><span class="t-name">Estoque</span></button>
+        <div class="tree-children">
+          <button class="nav-item leaf admin-only" data-page="estoque"><span class="folder">📁</span><span class="nav-label">Controle de Estoque</span></button>
+          <button class="nav-item leaf admin-only" data-page="entradas"><span class="folder">📁</span><span class="nav-label">Entrada de Mercadorias</span></button>
+          <button class="nav-item leaf admin-only" data-page="relatorio-estoque"><span class="folder">📁</span><span class="nav-label">Relatório de Estoque</span></button>
+        </div>
+      </div>
+
+      <div class="tree-group">
+        <button class="tree-head" onclick="toggleTreeGroup(this)"><span class="tw">−</span><span class="t-ico">🛒</span><span class="t-name">Compra</span></button>
+        <div class="tree-children">
+          <button class="nav-item leaf admin-only" data-page="relatorio-compras"><span class="folder">📁</span><span class="nav-label">Relatório de Compras</span></button>
+        </div>
+      </div>
+
+      <div class="tree-group">
+        <button class="tree-head" onclick="toggleTreeGroup(this)"><span class="tw">−</span><span class="t-ico">💰</span><span class="t-name">Venda</span></button>
+        <div class="tree-children">
+          <button class="nav-item leaf" data-page="pdv"><span class="folder">📁</span><span class="nav-label">PDV (Frente de Caixa)</span></button>
+          <button class="nav-item leaf admin-only" data-page="relatorio-vendas"><span class="folder">📁</span><span class="nav-label">Relatórios de Vendas</span></button>
+        </div>
+      </div>
+
+      <div class="tree-group">
+        <button class="tree-head" onclick="toggleTreeGroup(this)"><span class="tw">−</span><span class="t-ico">🧾</span><span class="t-name">Caixa</span></button>
+        <div class="tree-children">
+          <button class="nav-item leaf admin-only" data-page="fechamento"><span class="folder">📁</span><span class="nav-label">Abertura / Fechamento Caixa</span></button>
+        </div>
+      </div>
+
+      <div class="tree-group">
+        <button class="tree-head" onclick="toggleTreeGroup(this)"><span class="tw">−</span><span class="t-ico">🛡</span><span class="t-name">Sistema</span></button>
+        <div class="tree-children">
+          <button class="nav-item leaf admin-only" data-page="backup"><span class="folder">📁</span><span class="nav-label">Backup e Auditoria</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-foot">
+      <div id="user-info" style="margin-bottom:8px;"></div>
+      <button class="btn-sair" onclick="sair()">↩<span class="nav-label"> Sair</span></button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <div class="page" id="page-dashboard">
+      <div class="page-head">
+        <div><div class="eyebrow">Visão geral</div><h1>Painel do Proprietário</h1><p>Resumo de hoje, <span id="hoje-label"></span></p></div>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi" style="--accent:#1F5D45"><div class="label">Faturamento do dia</div><div class="value" id="kpi-fat">R$ 0,00</div><div class="foot">Total vendido hoje</div></div>
+        <div class="kpi" style="--accent:#E29B34"><div class="label">Produtos vendidos</div><div class="value" id="kpi-qtd">0</div><div class="foot">Unidades no dia</div></div>
+        <div class="kpi" style="--accent:#B3452F"><div class="label">Estoque baixo</div><div class="value" id="kpi-baixo">0</div><div class="foot">Produtos em reposição</div></div>
+        <div class="kpi" style="--accent:#1F5D45"><div class="label">Lucro estimado</div><div class="value" id="kpi-lucro">R$ 0,00</div><div class="foot">Vendas − custo do dia</div></div>
+      </div>
+      <div id="alerta-reposicao"></div>
+      <div id="alerta-validade"></div>
+      <div class="grid-2">
+        <div class="card"><h3>Últimas vendas</h3>
+          <table><thead><tr><th>Hora</th><th>Itens</th><th>Pagamento</th><th class="num">Total</th></tr></thead><tbody id="tbl-ultimas-vendas"></tbody></table>
+        </div>
+        <div class="card"><h3>Produtos para reposição</h3>
+          <table><thead><tr><th>Produto</th><th class="num">Atual</th><th class="num">Mínimo</th></tr></thead><tbody id="tbl-reposicao-mini"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== PDV ==================== -->
+    <div class="page" id="page-pdv">
+      <div class="erp-pdv">
+
+        <div class="pdv-topbar">
+          <div class="pdv-logo">🍕 PADOCA DO VÉIO <span>– PDV</span></div>
+          <div class="pdv-top-actions">
+            <button onclick="abrirUltimoCupom()" title="Visualizar último cupom">🧾</button>
+            <button onclick="document.body.classList.toggle('sidebar-collapsed')">—</button>
+            <button onclick="if(confirm('Sair do sistema?')) sair()">✕</button>
+          </div>
+        </div>
+
+        <div class="erp-banner"><span id="pdv-banner">REALIZE A ABERTURA DO CAIXA</span><span class="un-box" id="pdv-banner-un"></span></div>
+        <div class="caixa-bar" id="caixa-bar"></div>
+
+        <div class="erp-grid">
+          <!-- LADO ESQUERDO -->
+          <div class="erp-left">
+            <div class="erp-left-top">
+              <div class="erp-photo" id="pdv-photo"><img src="logo.png" alt="Logo da Padoca do Véio"></div>
+              <div class="erp-stack">
+                <div class="erp-box">
+                  <div class="erp-box-label">CÓDIGO DE BARRAS</div>
+                  <input type="text" id="pdv-scanner" class="erp-scan" autocomplete="off">
+                  <div class="scanner-status" id="scanner-status">Aguardando leitura...</div>
+                </div>
+                <div class="erp-box"><div class="erp-box-label">VALOR UNITÁRIO</div><div class="erp-box-value" id="pdv-vlr-unit">R$ 0,00</div></div>
+                <div class="erp-box"><div class="erp-box-label">TOTAL DO ITEM</div><div class="erp-box-value" id="pdv-tot-item">R$ 0,00</div></div>
+              </div>
+            </div>
+
+            <div class="erp-duo">
+              <div class="erp-box"><div class="erp-box-label">CÓDIGO</div><div class="erp-box-value small center" id="pdv-cod-int">—</div></div>
+              <div class="erp-box busca-wrap">
+                <div class="erp-box-label">QUANTIDADE</div>
+                <input type="number" id="pdv-qtd" class="erp-scan bare pdv-qtd" min="1" step="1" value="1" title="Quantidade do item">
+                <button class="btn-produtos-pdv" onclick="abrirProdutosPDV()" title="Abrir produtos por categoria">🛍 Produtos</button>
+                <input type="text" id="pdv-busca" class="erp-scan bare" autocomplete="off" title="Busca (F3)" placeholder="Buscar produto ou categoria">
+                <div class="busca-dropdown" id="pdv-busca-dropdown"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- LADO DIREITO -->
+          <div class="erp-right">
+            <div class="erp-list">
+              <div class="erp-list-head">LISTA DE PRODUTOS</div>
+              <div class="erp-list-body">
+                <table class="erp-table">
+                  <thead><tr><th>NºItem</th><th>Código</th><th>Descrição</th><th class="num">Qtd</th><th class="num">Vlr. Unit.</th><th class="num">Total</th></tr></thead>
+                  <tbody id="cart-list"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="erp-subtotal"><span>SUBTOTAL</span><span id="pdv-subtotal">0,00</span></div>
+            <div class="erp-duo-right">
+              <div class="erp-subtotal small"><span>TOTAL RECEBIDO</span><span id="pdv-recebido">R$ 0,00</span></div>
+              <div class="erp-subtotal small"><span>TROCO</span><span id="pdv-troco">R$ 0,00</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- LEGENDA DE ATALHOS -->
+        <div class="erp-shortcuts">
+          <div class="sc-col">
+            <b>F2</b> - Leitor · <b>F3</b> - Busca<br>
+            <b>F4</b> - Finalizar Venda<br>
+            <b>F5</b> - Sangria/Suprimento<br>
+            <b>F6</b> - Cancela Venda<br>
+            <b>F7</b> - Item Diversos · <b>Ctrl + F7</b> - Produtos
+          </div>
+          <div class="sc-col">
+            <b>F8</b> - Escolher item para excluir<br>
+            <b>F9</b> - Forma de Pagto · Setas<br>
+            <b>Ctrl + F11</b> - Último cupom<br>
+            <b>F12</b> - Fechar Caixa<br>
+            <b>+ / −</b> - Quantidade
+          </div>
+          <div class="sc-col">
+            <b>Enter</b> - Confirma leitura/pagto<br>
+            <b>Esc</b> - Volta / Fecha<br>
+            <b>F1</b> - Ajuda · <b>F10</b> - Sair
+          </div>
+        </div>
+
+        <!-- PAINEL FINALIZAR VENDA -->
+        <div class="erp-pay" id="erp-pay" style="display:none;">
+          <div class="erp-pay-col">
+            <div class="checkout-header"><div><div class="checkout-kicker">CAIXA · FINALIZAÇÃO</div><div class="erp-pay-title">Finalizar venda</div></div><div class="checkout-badge">PDV</div></div>
+            <div class="checkout-summary"><div><span>Itens</span><strong id="pdv-pay-itens">0</strong></div><div><span>Subtotal</span><strong id="pdv-pay-subtotal">R$ 0,00</strong></div></div>
+            <div class="gbox"><div class="glabel">CLIENTE / CPF</div><input type="text" id="pdv-cpf" class="ginput" placeholder="CPF (opcional)"></div>
+            <div class="gbox"><div class="glabel">DESCONTO</div>
+              <div style="display:flex;gap:6px;">
+                <input type="number" id="pdv-desconto" step="0.01" min="0" class="ginput" oninput="renderCart()">
+                <select id="pdv-desconto-tipo" class="ginput" style="width:70px" onchange="renderCart()"><option value="R$">R$</option><option value="%">%</option></select>
+              </div>
+            </div>
+            <div class="gbox"><div class="glabel">FORMA DE PAGAMENTO</div>
+              <div class="pay-options">
+                <div class="pay-opt gbtn selected" data-pay="Dinheiro" tabindex="0" role="button" onclick="selectPay(this)">DINHEIRO</div>
+                <div class="pay-opt gbtn" data-pay="Cartão" tabindex="0" role="button" onclick="selectPay(this)">CARTÃO</div>
+                <div class="pay-opt gbtn" data-pay="PIX" tabindex="0" role="button" onclick="selectPay(this)">PIX</div>
+              </div>
+            </div>
+            <div class="gbox total"><div class="glabel">TOTAL</div><div class="gvalue" id="pdv-total">0,00</div></div>
+            <div class="gbox"><div class="glabel">DINHEIRO (valor recebido)</div><input type="number" id="pdv-valor-pago" step="0.01" min="0" class="ginput" oninput="calcularTroco()"></div>
+            <div class="gbox total"><div class="glabel">SALDO / TROCO</div><div class="gvalue" id="pdv-saldo">0,00</div></div>
+            <div class="troco-status" id="troco-status"></div>
+            <div class="pdv-msg" id="pdv-msg"></div>
+            <div style="display:flex;gap:8px;margin-top:10px;">
+              <button class="gbtn confirm" style="flex:1" onclick="atalhoFinalizar()">CONFIRMAR VENDA</button>
+              <button class="gbtn cancel" style="flex:1" onclick="fecharPainelPagamento()">VOLTAR (Esc)</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==================== PRODUTOS ==================== -->
+    <div class="page admin-only" id="page-produtos">
+      <div class="page-head"><div><div class="eyebrow">Cadastros</div><h1>Produtos</h1></div><button class="btn" onclick="openProdutoModal()">+ Novo produto</button></div>
+      <div class="card"><div class="toolbar"><input type="text" id="busca-produto" placeholder="Buscar por código ou descrição..." oninput="renderProdutos()"><div class="spacer"></div></div>
+        <table><thead><tr><th>Código</th><th>Cód. Barras</th><th>Descrição</th><th>Categoria</th><th>Fornecedor</th><th class="num">Compra</th><th class="num">Venda</th><th class="num">Estoque</th><th class="num">Mínimo</th><th>Validade</th><th></th></tr></thead><tbody id="tbl-produtos"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ==================== FORNECEDORES ==================== -->
+    <div class="page admin-only" id="page-fornecedores">
+      <div class="page-head"><div><div class="eyebrow">Cadastros</div><h1>Fornecedores</h1></div><button class="btn" onclick="openFornecedorModal()">+ Novo fornecedor</button></div>
+      <div class="card"><table><thead><tr><th>Código</th><th>Razão Social</th><th>CNPJ</th><th>Telefone</th><th>E-mail</th><th>Contato</th><th></th></tr></thead><tbody id="tbl-fornecedores"></tbody></table></div>
+    </div>
+
+    <!-- ==================== ENTRADAS ==================== -->
+    <div class="page admin-only" id="page-entradas">
+      <div class="page-head"><div><div class="eyebrow">Compra</div><h1>Entrada de Mercadorias</h1></div></div>
+      <div class="grid-2">
+        <div class="card"><h3>Nova entrada</h3>
+          <div class="field"><label>Fornecedor</label><select id="entrada-fornecedor"></select></div>
+          <div class="field"><label>Produto</label><select id="entrada-produto"></select></div>
+          <div class="form-row"><div class="field"><label>Quantidade</label><input type="number" id="entrada-qtd" min="1" value="1"></div><div class="field"><label>Valor nota (R$)</label><input type="number" id="entrada-valor" min="0" step="0.01"></div></div>
+          <div class="form-row"><div class="field"><label>Lote</label><input type="text" id="entrada-lote"></div><div class="field"><label>Validade</label><input type="date" id="entrada-validade"></div></div>
+          <button class="btn" onclick="registrarEntrada()">Registrar entrada</button>
+          <div id="entrada-msg" style="margin-top:10px;font-size:13px;color:var(--green-dark);font-weight:600;"></div>
+        </div>
+        <div class="card"><h3>Histórico</h3><table><thead><tr><th>Data</th><th>Produto</th><th class="num">Qtd</th><th class="num">Valor</th><th>Lote</th><th>Validade</th><th></th></tr></thead><tbody id="tbl-entradas"></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ==================== ESTOQUE ==================== -->
+    <div class="page admin-only" id="page-estoque">
+      <div class="page-head"><div><div class="eyebrow">Estoque</div><h1>Controle de Estoque</h1></div><button class="btn" onclick="openMovEstoque()">+ Movimentação</button></div>
+      <div id="alerta-reposicao-2"></div>
+      <div id="alerta-validade-2"></div>
+      <div class="card"><table><thead><tr><th>Produto</th><th class="num">Qtd. Atual</th><th class="num">Mínimo</th><th>Status</th></tr></thead><tbody id="tbl-estoque"></tbody></table></div>
+      <div class="card"><h3>Movimentações (quebra/perda/contagem)</h3><table><thead><tr><th>Data</th><th>Produto</th><th>Tipo</th><th class="num">Qtd</th><th>Motivo</th></tr></thead><tbody id="tbl-mov-estoque"></tbody></table></div>
+    </div>
+
+    <!-- ==================== RELATÓRIO COMPRAS ==================== -->
+    <div class="page admin-only" id="page-relatorio-compras">
+      <div class="page-head"><div><div class="eyebrow">Compra</div><h1>Relatório de Compras</h1></div><button class="btn secondary" onclick="window.print()">🖨 Imprimir</button></div>
+      <div class="card"><div class="toolbar"><div class="field" style="margin:0"><label>De</label><input type="date" id="rc-de"></div><div class="field" style="margin:0"><label>Até</label><input type="date" id="rc-ate"></div><button class="btn secondary" style="align-self:flex-end" onclick="renderRelatorioCompras()">Filtrar</button><div class="spacer"></div><div class="eyebrow" style="align-self:flex-end">Total: <span id="rc-total">R$ 0,00</span></div></div>
+        <table><thead><tr><th>Data</th><th>Fornecedor</th><th>Produto</th><th class="num">Qtd</th><th class="num">Valor</th></tr></thead><tbody id="tbl-relatorio-compras"></tbody></table></div>
+    </div>
+
+    <!-- ==================== RELATÓRIO VENDAS ==================== -->
+    <div class="page admin-only" id="page-relatorio-vendas">
+      <div class="page-head"><div><div class="eyebrow">Venda</div><h1>Relatório de Vendas</h1></div><button class="btn secondary" onclick="window.print()">🖨 Imprimir</button></div>
+      <div class="card"><div class="toolbar"><div class="field" style="margin:0"><label>De</label><input type="date" id="rv-de"></div><div class="field" style="margin:0"><label>Até</label><input type="date" id="rv-ate"></div><div class="field" style="margin:0"><label>Pagamento</label><select id="rv-filtro-pagamento"><option value="">Todas</option><option>Dinheiro</option><option>Cartão</option><option>PIX</option></select></div><button class="btn secondary" style="align-self:flex-end" onclick="renderRelatorioVendas()">Filtrar</button><div class="spacer"></div></div>
+        <div class="kpi-row"><div class="kpi" style="--accent:#1F5D45"><div class="label">Faturamento</div><div class="value" id="rv-faturamento">R$ 0,00</div></div><div class="kpi" style="--accent:#E29B34"><div class="label">Unidades</div><div class="value" id="rv-unidades">0</div></div><div class="kpi" style="--accent:#1F5D45"><div class="label">Lucro</div><div class="value" id="rv-lucro">R$ 0,00</div></div><div class="kpi" style="--accent:#B3452F"><div class="label">Ticket médio</div><div class="value" id="rv-ticket">R$ 0,00</div></div></div>
+        <h3>Por forma de pagamento</h3><table style="margin-bottom:22px"><thead><tr><th>Forma</th><th class="num">Qtd</th><th class="num">Valor</th><th class="num">%</th></tr></thead><tbody id="tbl-rv-pagamento"></tbody></table>
+        <h3>Top 10 produtos</h3><table><thead><tr><th>Produto</th><th class="num">Qtd</th><th class="num">Valor</th><th class="num">Lucro</th></tr></thead><tbody id="tbl-relatorio-vendas"></tbody></table></div>
+    </div>
+
+    <!-- ==================== RELATÓRIO ESTOQUE ==================== -->
+    <div class="page admin-only" id="page-relatorio-estoque">
+      <div class="page-head"><div><div class="eyebrow">Estoque</div><h1>Análise de Estoque</h1></div><button class="btn secondary" onclick="window.print()">🖨 Imprimir</button></div>
+      <div class="card">
+        <div class="kpi-row"><div class="kpi" style="--accent:#1F5D45"><div class="label">Valor (venda)</div><div class="value" id="re-valor-venda">R$ 0,00</div></div><div class="kpi" style="--accent:#E29B34"><div class="label">Valor (custo)</div><div class="value" id="re-valor-custo">R$ 0,00</div></div><div class="kpi" style="--accent:#1F5D45"><div class="label">Itens</div><div class="value" id="re-total-itens">0</div></div><div class="kpi" style="--accent:#B3452F"><div class="label">Reposição</div><div class="value" id="re-reposicao">0</div></div></div>
+        <h3>⚠ A vencer / vencidos (30d)</h3><table style="margin-bottom:22px"><thead><tr><th>Produto</th><th>Lote</th><th>Validade</th><th class="num">Dias</th><th class="num">Estoque</th><th>Status</th></tr></thead><tbody id="tbl-re-validade"></tbody></table>
+        <h3>Sugestão de reposição</h3><table style="margin-bottom:22px"><thead><tr><th>Produto</th><th>Fornecedor</th><th class="num">Estoque</th><th class="num">Mínimo</th><th class="num">Sugerido</th></tr></thead><tbody id="tbl-re-sugestao"></tbody></table>
+        <h3>Curva ABC</h3><table style="margin-bottom:22px"><thead><tr><th>Produto</th><th class="num">Valor</th><th class="num">% acum.</th><th>Classe</th></tr></thead><tbody id="tbl-re-abc"></tbody></table>
+        <h3>Valor por fornecedor</h3><table style="margin-bottom:22px"><thead><tr><th>Fornecedor</th><th class="num">Produtos</th><th class="num">Unidades</th><th class="num">Valor (venda)</th></tr></thead><tbody id="tbl-re-fornecedor"></tbody></table>
+        <h3>Estoque completo</h3><table><thead><tr><th>Produto</th><th>Categoria</th><th class="num">Estoque</th><th class="num">Mín.</th><th class="num">Custo</th><th class="num">Venda</th><th>Status</th></tr></thead><tbody id="tbl-re-completo"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ==================== FECHAMENTO ==================== -->
+    <div class="page admin-only" id="page-fechamento">
+      <div class="page-head"><div><div class="eyebrow">Caixa</div><h1>Fechamento Diário</h1></div></div>
+      <div class="kpi-row"><div class="kpi" style="--accent:#1F5D45"><div class="label">Dinheiro</div><div class="value" id="fz-dinheiro">R$ 0,00</div></div><div class="kpi" style="--accent:#E29B34"><div class="label">Cartão</div><div class="value" id="fz-cartao">R$ 0,00</div></div><div class="kpi" style="--accent:#1F5D45"><div class="label">PIX</div><div class="value" id="fz-pix">R$ 0,00</div></div><div class="kpi" style="--accent:#B3452F"><div class="label">Total</div><div class="value" id="fz-total">R$ 0,00</div></div></div>
+      <div class="card"><h3>Lucro do dia: <span id="fz-lucro">R$ 0,00</span></h3><table><thead><tr><th>Hora</th><th>Itens</th><th>Pagamento</th><th class="num">Total</th></tr></thead><tbody id="tbl-fechamento"></tbody></table></div>
+    </div>
+
+    <!-- ==================== USUÁRIOS ==================== -->
+    <div class="page admin-only" id="page-usuarios">
+      <div class="page-head"><div><div class="eyebrow">Sistema</div><h1>Usuários</h1></div><button class="btn" onclick="openUsuarioModal()">+ Novo usuário</button></div>
+      <div class="card"><table><thead><tr><th>Código</th><th>Nome</th><th>Login</th><th>Nível</th><th></th></tr></thead><tbody id="tbl-usuarios"></tbody></table></div>
+    </div>
+
+    <!-- ==================== BACKUP ==================== -->
+    <div class="page admin-only" id="page-backup">
+      <div class="page-head"><div><div class="eyebrow">Sistema</div><h1>Backup e Auditoria</h1><p>Somente administradores podem acessar esta área.</p></div></div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Backup do sistema</h3>
+          <p class="modal-hint">Exporte produtos, usuários, vendas, estoque, caixa e registros de auditoria.</p>
+          <button class="btn" onclick="exportarBackup()">⬇ Exportar backup</button>
+          <hr class="section-line">
+          <h3>Recuperar sistema</h3>
+          <p class="modal-hint">A restauração substitui os dados atuais. Faça um backup antes de continuar.</p>
+          <input type="file" id="backup-arquivo" accept="application/json,.json">
+          <button class="btn danger" onclick="restaurarBackup()">↥ Restaurar backup</button>
+          <div id="backup-msg" class="backup-msg"></div>
+        </div>
+        <div class="card">
+          <div class="page-head compact"><div><h3>Log de atividades</h3><p id="auditoria-resumo"></p></div><button class="btn secondary small" onclick="renderAuditoria()">Atualizar</button></div>
+          <div class="table-scroll"><table><thead><tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Detalhes</th></tr></thead><tbody id="tbl-auditoria"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== BARRA DE STATUS ===== -->
+<div class="erp-statusbar erp-chrome">
+  <span id="sb-data"></span>
+  <span>Usuário: <b id="sb-user"></b></span>
+  <span>Grupo: <b id="sb-grupo"></b></span>
+  <span>Empresa: <b>PADOCA DO VÉIO</b></span>
+  <span>Terminal: <b>CAIXA 01</b></span>
+</div>
+
+<!-- ============ MODAIS ============ -->
+<div class="overlay" id="modal-produto"><div class="modal"><h3 id="modal-produto-titulo">Novo produto</h3>
+  <input type="hidden" id="prod-id">
+  <div class="form-row"><div class="field"><label>Código automático</label><input type="text" id="prod-codigo" readonly></div><div class="field"><label>Cód. Barras</label><input type="text" id="prod-barras"></div></div>
+  <div class="field"><label>Descrição</label><input type="text" id="prod-descricao"></div>
+  <div class="form-row"><div class="field"><label>Categoria</label><input type="text" id="prod-categoria"></div><div class="field"><label>Fornecedor</label><select id="prod-fornecedor"></select></div></div>
+  <div class="form-row three"><div class="field"><label>Compra (R$)</label><input type="number" step="0.01" id="prod-preco-compra"></div><div class="field"><label>Venda (R$)</label><input type="number" step="0.01" id="prod-preco-venda"></div><div class="field"><label>Mínimo</label><input type="number" id="prod-estoque-min"></div></div>
+  <div class="form-row"><div class="field"><label>Estoque</label><input type="number" id="prod-estoque"></div><div class="field"><label>Lote</label><input type="text" id="prod-lote"></div></div>
+  <div class="field"><label>Validade</label><input type="date" id="prod-validade"></div>
+  <div class="field"><label>Imagem do produto (URL da foto)</label><input type="text" id="prod-imagem" placeholder="Cole aqui o endereço da foto"></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-produto')">Cancelar</button><button class="btn" onclick="salvarProduto()">Salvar</button></div>
+</div></div>
+
+<div class="overlay" id="modal-fornecedor"><div class="modal"><h3 id="modal-fornecedor-titulo">Novo fornecedor</h3>
+  <input type="hidden" id="forn-id">
+  <div class="field"><label>Razão Social</label><input type="text" id="forn-razao"></div>
+  <div class="form-row"><div class="field"><label>CNPJ</label><input type="text" id="forn-cnpj"></div><div class="field"><label>Telefone</label><input type="text" id="forn-telefone"></div></div>
+  <div class="form-row"><div class="field"><label>E-mail</label><input type="text" id="forn-email"></div><div class="field"><label>Contato</label><input type="text" id="forn-contato"></div></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-fornecedor')">Cancelar</button><button class="btn" onclick="salvarFornecedor()">Salvar</button></div>
+</div></div>
+
+<div class="overlay" id="modal-usuario"><div class="modal"><h3 id="modal-usuario-titulo">Novo usuário</h3>
+  <input type="hidden" id="user-id">
+  <div class="field"><label>Nome</label><input type="text" id="user-nome"></div>
+  <div class="field"><label>Login</label><input type="text" id="user-username" autocomplete="off"></div>
+  <div class="field"><label>Senha</label><input type="text" id="user-password"></div>
+  <div class="field"><label>Nível</label><select id="user-role"><option value="user">Operador de Caixa</option><option value="admin">Administrador</option></select></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-usuario')">Cancelar</button><button class="btn" onclick="salvarUsuario()">Salvar</button></div>
+</div></div>
+
+<div class="overlay" id="modal-diversos"><div class="modal"><h3>Item Diversos</h3>
+  <div class="field"><label>Descrição</label><input type="text" id="diversos-descricao"></div>
+  <div class="form-row"><div class="field"><label>Qtd</label><input type="number" id="diversos-qtd" value="1" min="1"></div><div class="field"><label>Valor (R$)</label><input type="number" id="diversos-valor" step="0.01" min="0"></div></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-diversos')">Cancelar</button><button class="btn" onclick="adicionarItemDiversos()">Adicionar</button></div>
+</div></div>
+
+<div class="overlay" id="modal-pizza-sabores"><div class="modal"><h3>🍕 Pizza de 2 Sabores</h3>
+  <p class="modal-hint">Escolha dois sabores. O valor será o preço do sabor mais caro.</p>
+  <div class="field"><label>Primeiro sabor</label><select id="pizza-sabor-1" onchange="atualizarPizzaDoisSabores()"></select></div>
+  <div class="field"><label>Segundo sabor</label><select id="pizza-sabor-2" onchange="atualizarPizzaDoisSabores()"></select></div>
+  <div class="pizza-preco-final">Valor da pizza: <strong id="pizza-valor-final">R$ 0,00</strong></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-pizza-sabores')">Cancelar</button><button class="btn" onclick="adicionarPizzaDoisSabores()">Adicionar pizza</button></div>
+</div></div>
+
+<div class="overlay" id="modal-ajuda"><div class="modal"><h3>⌨ Atalhos</h3>
+  <table class="tabela-atalhos">
+    <tr><td><span class="kbd">Enter</span></td><td>Confirma leitura / pagamento</td></tr>
+    <tr><td><span class="kbd">F2</span></td><td>Leitor</td></tr><tr><td><span class="kbd">F3</span></td><td>Busca</td></tr>
+    <tr><td><span class="kbd">F4</span></td><td>Finalizar venda</td></tr><tr><td><span class="kbd">F5</span></td><td>Sangria/Suprimento</td></tr>
+    <tr><td><span class="kbd">F6</span></td><td>Cancela venda</td></tr><tr><td><span class="kbd">F7</span></td><td>Diversos</td></tr><tr><td><span class="kbd">Ctrl + F7</span></td><td>Produtos por categoria</td></tr>
+    <tr><td><span class="kbd">F8</span></td><td>Escolhe item para excluir</td></tr><tr><td><span class="kbd">F9</span></td><td>Pagamento</td></tr><tr><td><span class="kbd">← ↑ → ↓</span></td><td>Escolher forma de pagamento</td></tr>
+    <tr><td><span class="kbd">Ctrl + F11</span></td><td>Último cupom</td></tr><tr><td><span class="kbd">F12</span></td><td>Fechar caixa</td></tr><tr><td><span class="kbd">Esc</span></td><td>Volta</td></tr>
+  </table>
+  <div class="modal-actions"><button class="btn" onclick="closeModal('modal-ajuda')">Fechar</button></div>
+</div></div>
+
+<div class="overlay" id="modal-abertura-caixa"><div class="modal"><h3>🔓 Abertura de Caixa</h3>
+  <div class="field"><label>Fundo de troco (R$)</label><input type="number" id="caixa-fundo" step="0.01" min="0" value="200"></div>
+  <div class="modal-actions"><button class="btn" onclick="abrirCaixa()">Abrir caixa</button></div>
+</div></div>
+
+<div class="overlay" id="modal-mov-caixa"><div class="modal"><h3>💰 Sangria / Suprimento</h3>
+  <div class="field"><label>Tipo</label><select id="mov-caixa-tipo"><option value="sangria">Sangria (saída)</option><option value="suprimento">Suprimento (entrada)</option></select></div>
+  <div class="field"><label>Valor (R$)</label><input type="number" id="mov-caixa-valor" step="0.01" min="0"></div>
+  <div class="field"><label>Motivo</label><input type="text" id="mov-caixa-motivo"></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-mov-caixa')">Cancelar</button><button class="btn" onclick="salvarMovCaixa()">Registrar</button></div>
+</div></div>
+
+<div class="overlay" id="modal-fecha-caixa"><div class="modal"><h3>🔒 Fechamento de Caixa</h3>
+  <div id="fecha-resumo"></div>
+  <div class="field"><label>Valor contado (R$)</label><input type="text" id="fecha-contado" inputmode="decimal" autocomplete="off" oninput="calcDiferenca()"></div>
+  <div class="troco-display"><div class="troco-label">Diferença</div><div class="troco-valor" id="fecha-diferenca">R$ 0,00</div></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-fecha-caixa')">Cancelar</button><button class="btn danger" onclick="confirmarFechamentoCaixa()">Confirmar</button></div>
+</div></div>
+
+<div class="overlay" id="modal-cupom"><div class="modal cupom-modal"><h3>🧾 Cupom da venda</h3>
+  <div id="cupom-preview" class="cupom-preview"></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-cupom')">Fechar</button><button class="btn" onclick="imprimirCupom()">🖨 Imprimir cupom</button></div>
+</div></div>
+
+<div class="overlay" id="modal-excluir-item"><div class="modal"><h3>↩ Excluir item da venda</h3>
+  <p class="modal-hint">Selecione o item que deseja retirar. Será removida apenas 1 unidade.</p>
+  <div id="lista-excluir-itens" class="lista-excluir-itens"></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-excluir-item')">Cancelar</button></div>
+</div></div>
+
+<div class="overlay" id="modal-produtos-pdv"><div class="modal modal-produtos-pdv"><h3>🛍 Produtos para venda</h3>
+  <p class="modal-hint">Escolha uma categoria e depois o produto. A quantidade informada no PDV será utilizada.</p>
+  <div id="categorias-pdv" class="categorias-pdv"></div>
+  <div id="lista-produtos-pdv" class="lista-produtos-pdv"></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-produtos-pdv')">Fechar</button><button class="btn" onclick="abrirDiversosPeloMenu()">＋ Item diverso</button></div>
+</div></div>
+
+<div class="overlay" id="modal-mov-estoque"><div class="modal"><h3>📦 Movimentação de Estoque</h3>
+  <div class="field"><label>Produto</label><select id="mve-produto"></select></div>
+  <div class="form-row"><div class="field"><label>Tipo</label><select id="mve-tipo"><option value="quebra">Quebra (−)</option><option value="perda">Perda (−)</option><option value="contagem">Contagem</option><option value="acerto">Acerto (+)</option></select></div><div class="field"><label>Qtd</label><input type="number" id="mve-qtd" min="0" value="1"></div></div>
+  <div class="field"><label>Motivo</label><input type="text" id="mve-motivo"></div>
+  <div class="modal-actions"><button class="btn secondary" onclick="closeModal('modal-mov-estoque')">Cancelar</button><button class="btn" onclick="salvarMovEstoque()">Registrar</button></div>
+</div></div>
+
+<!-- IMPORTANTE: type="module" é obrigatório para o Firebase funcionar -->
+<script type="module" src="script.js"></script>
+</body>
+</html>
