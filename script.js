@@ -9,12 +9,13 @@ import { getFirestore, collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 // 2. CONFIGURAÇÃO (SUBSTITUA PELAS SUAS CHAVES REAIS)
 // ==========================================================
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY_AQUI",
-  authDomain: "SEU_PROJETO.firebaseapp.com",
-  projectId: "SEU_PROJETO",
-  storageBucket: "SEU_PROJETO.appspot.com",
-  messagingSenderId: "SEU_MESSAGING_ID",
-  appId: "SEU_APP_ID"
+  apiKey: "AIzaSyCT2i6JN4RjNHy58ujrsAz4XQrDJ6IzytA",
+  authDomain: "padoca-d5372.firebaseapp.com",
+  projectId: "padoca-d5372",
+  storageBucket: "padoca-d5372.firebasestorage.app",
+  messagingSenderId: "464588320056",
+  appId: "1:464588320056:web:a966da53c66efed18ca5cd",
+  measurementId: "G-EQTBEPBTB4"
 };
 
 const app = initializeApp(firebaseConfig);
