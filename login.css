@@ -46,7 +46,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvet
 .btn-entrar:active{ transform:scale(.99); }
 .btn-entrar:disabled { background: var(--ink-soft); cursor: not-allowed; transform: none; opacity: 0.8; }
 .empresa {text-align: center; margin-top: 20px;}
-.logo {width: 150px; height: auto; cursor: pointer;}
+.empresa a {text-decoration: none;}
+.logo {color: var(--green-dark); cursor: pointer; font-size: 15px; font-weight: 700;}
+.logo:hover {color: var(--green);}
 @media(max-width:860px){
   .login-wrap{ grid-template-columns:1fr; }
   .side-brand{ padding:40px 24px; }
