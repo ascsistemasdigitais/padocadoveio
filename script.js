@@ -9,7 +9,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ==========================================================
-// 2. CONFIGURAÇÃO DO FIREBASE (SUBSTITUA PELAS SUAS CHAVES)
+// 2. CONFIGURAÇÃO DO FIREBASE
 // ==========================================================
 const firebaseConfig = {
   apiKey: "AIzaSyCT2i6JN4RjNHy58ujrsAz4XQrDJ6IzytA",
@@ -45,6 +45,7 @@ let movEstoque = [];
 let usuarios = [];
 let auditoria = [];
 let caixaAtual = null;
+let indiceBuscaSelecionado = -1;
 let ultimaVenda = null;
 let currentPay = "Dinheiro";
 let cart = [];
@@ -105,7 +106,6 @@ function aplicarPermissoes() {
 // 5. SINCRONIZAÇÃO EM TEMPO REAL (FIRESTORE)
 // ==========================================================
 function iniciarSincronizacaoEmTempoReal() {
-  // OUVIR PRODUTOS
   const qProd = query(collection(db, "produtos"), orderBy("descricao", "asc"));
   unsubscribes.push(onSnapshot(qProd, (snap) => {
     produtos = snap.docs.map(d => ({ id: d.id, ...converterTimestamps(d.data()) }));
@@ -118,7 +118,6 @@ function iniciarSincronizacaoEmTempoReal() {
     refreshAll();
   }));
 
-  // OUVIR FORNECEDORES
   const qForn = query(collection(db, "fornecedores"), orderBy("razao", "asc"));
   unsubscribes.push(onSnapshot(qForn, (snap) => {
     fornecedores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -126,7 +125,6 @@ function iniciarSincronizacaoEmTempoReal() {
     fillFornecedorSelects();
   }));
 
-  // OUVIR VENDAS
   const qVendas = query(collection(db, "vendas"), orderBy("dataHora", "desc"));
   unsubscribes.push(onSnapshot(qVendas, (snap) => {
     vendas = snap.docs.map(d => ({ id: d.id, ...converterTimestamps(d.data()) }));
@@ -136,7 +134,6 @@ function iniciarSincronizacaoEmTempoReal() {
     refreshAll();
   }));
 
-  // OUVIR ENTRADAS
   const qEntradas = query(collection(db, "entradas"), orderBy("data", "desc"));
   unsubscribes.push(onSnapshot(qEntradas, (snap) => {
     entradas = snap.docs.map(d => ({ id: d.id, ...converterTimestamps(d.data()) }));
@@ -144,14 +141,12 @@ function iniciarSincronizacaoEmTempoReal() {
     if (document.getElementById('page-relatorio-compras')?.classList.contains('active')) renderRelatorioCompras();
   }));
 
-  // OUVIR MOVIMENTAÇÕES DE ESTOQUE
   const qMovEstoque = query(collection(db, "movEstoque"), orderBy("data", "desc"));
   unsubscribes.push(onSnapshot(qMovEstoque, (snap) => {
     movEstoque = snap.docs.map(d => ({ id: d.id, ...converterTimestamps(d.data()) }));
     if (document.getElementById('page-estoque')?.classList.contains('active')) renderMovEstoque();
   }));
 
-  // OUVIR AUDITORIA
   const qAuditoria = query(collection(db, "auditoria"), orderBy("dataHora", "desc"));
   unsubscribes.push(onSnapshot(qAuditoria, (snap) => {
     auditoria = snap.docs.map(d => ({ id: d.id, ...converterTimestamps(d.data()) }));
@@ -167,7 +162,6 @@ function iniciarSincronizacaoEmTempoReal() {
   }
 }
 
-// Converte Timestamps do Firebase para strings legíveis
 function converterTimestamps(obj) {
   const novo = { ...obj };
   for (const key in novo) {
@@ -244,7 +238,6 @@ async function registrarEntradaNoFirebase(dados) {
   try {
     dados.data = hojeStr();
     await addDoc(collection(db, "entradas"), dados);
-    // Atualiza estoque do produto
     const prod = produtos.find(p => p.id === dados.produtoId);
     if (prod) {
       await updateDoc(doc(db, "produtos", dados.produtoId), {
@@ -302,7 +295,6 @@ async function registrarVendaNoFirebase(dadosVenda) {
     
     const novaVendaRef = await addDoc(collection(db, "vendas"), dadosVenda);
     
-    // Baixa no estoque
     for (const item of dadosVenda.itens) {
       if (item.tipo === 'produto' && item.produtoId) {
         const prodAtual = produtos.find(p => p.id === item.produtoId);
@@ -337,6 +329,38 @@ const fornecedorById = id => fornecedores.find(f => f.id === id);
 const produtoByBarras = c => produtos.find(p => (p.barras || '').trim() === String(c).trim());
 const escapeHtml = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
+// ==========================================================
+// 8. GERAÇÃO AUTOMÁTICA DE CÓDIGO POR CATEGORIA
+// ==========================================================
+function gerarCodigoProduto(categoria) {
+  const prefixos = {
+    'Pizza': 'P',
+    'Mercearia': 'M',
+    'Lanche': 'L',
+    'Salgado': 'S',
+    'Panificação': 'PA',
+    'Bebida': 'B',
+    'Outros': 'O'
+  };
+  
+  const prefixo = prefixos[categoria] || 'G';
+  const produtosDaCategoria = produtos.filter(p => p.categoria === categoria);
+  
+  let maiorNumero = 0;
+  for (const p of produtosDaCategoria) {
+    if (p.codigo && p.codigo.startsWith(prefixo)) {
+      const numeroStr = p.codigo.substring(prefixo.length);
+      const numero = Number(numeroStr);
+      if (!isNaN(numero) && numero > maiorNumero) {
+        maiorNumero = numero;
+      }
+    }
+  }
+  
+  const proximoNumero = maiorNumero + 1;
+  return prefixo + String(proximoNumero).padStart(2, '0');
+}
+
 function fillFornecedorSelects() {
   const o = fornecedores.map(f => `<option value="${f.id}">${f.razao}</option>`).join('');
   ['prod-fornecedor', 'entrada-fornecedor'].forEach(id => { const e = document.getElementById(id); if (e) e.innerHTML = o || '<option value="">Nenhum</option>'; });
@@ -348,26 +372,20 @@ function fillProdutoSelects() {
   const e2 = document.getElementById('mve-produto'); if (e2) e2.innerHTML = o || '<option value="">Nenhum</option>';
 }
 
-function gerarCodigoProduto() {
-  let proximo = produtos.reduce((maior, p) => {
-    const numero = Number(p.codigo);
-    return Number.isInteger(numero) && numero > maior ? numero : maior;
-  }, 0) + 1;
-  return String(proximo).padStart(3, '0');
-}
-
 // ==========================================================
-// 8. PRODUTOS
+// 9. PRODUTOS
 // ==========================================================
 function openProdutoModal(id) {
   if (!isAdmin) return;
   fillFornecedorSelects();
   set('modal-produto-titulo', id ? 'Editar produto' : 'Novo produto');
+  
   if (id) {
     const p = produtoById(id);
     if (!p) return;
     document.getElementById('prod-id').value = p.id;
     document.getElementById('prod-codigo').value = p.codigo || '';
+    document.getElementById('prod-codigo').style.color = '#000';
     document.getElementById('prod-barras').value = p.barras || '';
     document.getElementById('prod-descricao').value = p.descricao || '';
     document.getElementById('prod-categoria').value = p.categoria || '';
@@ -380,8 +398,10 @@ function openProdutoModal(id) {
     document.getElementById('prod-validade').value = p.validade || '';
     document.getElementById('prod-imagem').value = p.imagem || '';
   } else {
-    ['prod-id', 'prod-barras', 'prod-descricao', 'prod-categoria', 'prod-preco-compra', 'prod-preco-venda', 'prod-estoque', 'prod-estoque-min', 'prod-lote', 'prod-validade', 'prod-imagem'].forEach(i => document.getElementById(i).value = '');
-    document.getElementById('prod-codigo').value = gerarCodigoProduto();
+    ['prod-id', 'prod-barras', 'prod-descricao', 'prod-fornecedor', 'prod-preco-compra', 'prod-preco-venda', 'prod-estoque', 'prod-estoque-min', 'prod-lote', 'prod-validade', 'prod-imagem'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('prod-categoria').value = '';
+    document.getElementById('prod-codigo').value = 'Automático (definido pela categoria)';
+    document.getElementById('prod-codigo').style.color = '#888';
   }
   document.getElementById('modal-produto').classList.add('show');
 }
@@ -390,13 +410,24 @@ async function salvarProduto() {
   if (!isAdmin) return;
   const id = document.getElementById('prod-id').value;
   const descricao = document.getElementById('prod-descricao').value.trim();
+  const categoria = document.getElementById('prod-categoria').value.trim();
+  
   if (!descricao) { alert('Informe a descrição.'); return; }
+  if (!categoria) { alert('Informe a categoria para gerar o código automático.'); return; }
+  
+  let codigo = '';
+  if (id) {
+    const prodOriginal = produtoById(id);
+    codigo = prodOriginal ? prodOriginal.codigo : gerarCodigoProduto(categoria);
+  } else {
+    codigo = gerarCodigoProduto(categoria);
+  }
   
   const dados = {
-    codigo: id ? produtoById(id).codigo : gerarCodigoProduto(),
+    codigo: codigo,
     barras: document.getElementById('prod-barras').value.trim(),
     descricao,
-    categoria: document.getElementById('prod-categoria').value.trim(),
+    categoria,
     fornecedorId: Number(document.getElementById('prod-fornecedor').value) || null,
     precoCompra: parseFloat(document.getElementById('prod-preco-compra').value) || 0,
     precoVenda: parseFloat(document.getElementById('prod-preco-venda').value) || 0,
@@ -426,7 +457,7 @@ function renderProdutos() {
 }
 
 // ==========================================================
-// 9. FORNECEDORES
+// 10. FORNECEDORES
 // ==========================================================
 function openFornecedorModal(id) {
   if (!isAdmin) return;
@@ -472,7 +503,7 @@ function renderFornecedores() {
 }
 
 // ==========================================================
-// 10. ENTRADAS
+// 11. ENTRADAS
 // ==========================================================
 async function registrarEntrada() {
   if (!isAdmin) return;
@@ -508,7 +539,7 @@ function renderEntradas() {
 function excluirEntrada(id) { if (isAdmin) excluirEntradaNoFirebase(id); }
 
 // ==========================================================
-// 11. MOVIMENTAÇÕES DE ESTOQUE
+// 12. MOVIMENTAÇÕES DE ESTOQUE
 // ==========================================================
 function openMovEstoque() {
   if (!isAdmin) return;
@@ -539,7 +570,7 @@ function renderMovEstoque() {
 }
 
 // ==========================================================
-// 12. ESTOQUE
+// 13. ESTOQUE
 // ==========================================================
 function diasValidade(v) { 
   if (!v) return null; 
@@ -580,7 +611,7 @@ function renderEstoque() {
 }
 
 // ==========================================================
-// 13. PDV - CARRINHO E PAGAMENTO
+// 14. PDV - CARRINHO E PAGAMENTO
 // ==========================================================
 function getCartInfo(item) {
   if (item.tipo === 'pizza2') return { descricao: item.descricao, precoVenda: item.valorUnitario, precoCompra: item.custoUnitario || 0, barras: null, estoque: Infinity, codigo: item.codigo || 'P02' };
@@ -680,7 +711,7 @@ async function finalizeSale() {
 }
 
 // ==========================================================
-// 14. PDV - SCANNER E BUSCA
+// 15. PDV - SCANNER E BUSCA
 // ==========================================================
 function focusScanner() { const i = document.getElementById('pdv-scanner'); if (i) i.focus(); }
 function setScannerStatus(m, err) {
@@ -699,7 +730,7 @@ function processarCodigoBarras(codigo) {
     if (input) { input.value = ''; input.focus(); } return;
   }
   
-  if (produto.codigo === 'P02' || produto.descricao === 'Pizza 2 Sabores') {
+  if (ehPizzaDoisSabores(produto)) {
     abrirPizzaDoisSabores(quantidadeInformada());
     if (input) { input.value = ''; input.focus(); } return;
   }
@@ -710,9 +741,30 @@ function processarCodigoBarras(codigo) {
   } else { beep(false); if (input) input.focus(); }
 }
 
+function moverSelecaoBusca(direcao) {
+  const resultados = buscarProdutos(document.getElementById('pdv-busca')?.value).slice(0, 8);
+  if (!resultados.length) return;
+  
+  indiceBuscaSelecionado = (indiceBuscaSelecionado + direcao + resultados.length) % resultados.length;
+  renderBuscaDropdown();
+  
+  const dd = document.getElementById('pdv-busca-dropdown');
+  if (dd) {
+    const selected = dd.querySelector(`[data-index="${indiceBuscaSelecionado}"]`);
+    if (selected) selected.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+// CORREÇÃO: Função auxiliar para identificar Pizza 2 Sabores pela descrição
+function ehPizzaDoisSabores(produto) {
+  if (!produto) return false;
+  const desc = (produto.descricao || '').toLowerCase();
+  return desc === 'pizza 2 sabores' || desc.includes('pizza 2 sabores');
+}
+
 function adicionarItemAoCarrinho(produtoId, quantidade) {
   const p = produtoById(produtoId); if (!p) return false;
-  if (p.codigo === 'P02' || p.descricao === 'Pizza 2 Sabores') {
+  if (ehPizzaDoisSabores(p)) {
     abrirPizzaDoisSabores(quantidade); return false;
   }
   const noCart = cart.filter(c => c.tipo === 'produto' && c.produtoId === produtoId).reduce((s, c) => s + c.quantidade, 0);
@@ -740,17 +792,48 @@ function buscarProdutos(t) {
 function renderBuscaDropdown() {
   const dd = document.getElementById('pdv-busca-dropdown'), input = document.getElementById('pdv-busca');
   if (!dd || !input) return;
+  
   const termo = input.value, res = buscarProdutos(termo);
-  if (!termo.trim()) { dd.classList.remove('show'); dd.innerHTML = ''; return; }
-  let html = res.length === 0 ? `<div class="busca-item" style="color:var(--ink-soft)">Nenhum produto para "${escapeHtml(termo.trim())}".</div>`
-    : res.slice(0, 8).map(p => `<div class="busca-item" onclick="addItemBusca('${p.id}')"><span><b>${p.codigo}</b> ${escapeHtml(p.descricao)}</span><span>${p.estoque}un · ${fmt(p.precoVenda)}</span></div>`).join('');
+  
+  // Resetar índice se não houver resultados
+  if (res.length === 0) {
+    indiceBuscaSelecionado = -1;
+  } else if (indiceBuscaSelecionado >= res.length) {
+    indiceBuscaSelecionado = res.length - 1;
+  }
+  
+  if (!termo.trim()) { 
+    dd.classList.remove('show'); 
+    dd.innerHTML = ''; 
+    return; 
+  }
+  
+  let html = res.length === 0 
+    ? `<div class="busca-item" style="color:var(--ink-soft)">Nenhum produto para "${escapeHtml(termo.trim())}".</div>`
+    : res.slice(0, 8).map((p, index) => `
+      <div class="busca-item${index === indiceBuscaSelecionado ? ' selected' : ''}" 
+           onclick="addItemBusca('${p.id}')"
+           data-index="${index}">
+        <span><b>${p.codigo}</b> ${escapeHtml(p.descricao)}</span>
+        <span>${p.estoque}un · ${fmt(p.precoVenda)}</span>
+      </div>
+    `).join('');
+  
   html += `<div class="busca-item busca-diversos" onclick="openDiversosModalPelaBusca()">➕ Item Diversos</div>`;
-  dd.innerHTML = html; dd.classList.add('show');
+  dd.innerHTML = html; 
+  dd.classList.add('show');
+  
+  // Scroll automático para o item selecionado
+  if (indiceBuscaSelecionado >= 0) {
+    const selected = dd.querySelector(`[data-index="${indiceBuscaSelecionado}"]`);
+    if (selected) selected.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 function addItemBusca(produtoId) {
   const q = parseInt(document.getElementById('pdv-qtd').value) || 1;
-  if (produtoById(produtoId)?.codigo === 'P02') {
+  const produto = produtoById(produtoId);
+  if (ehPizzaDoisSabores(produto)) {
     document.getElementById('pdv-busca-dropdown').classList.remove('show');
     abrirPizzaDoisSabores(q); return;
   }
@@ -765,19 +848,27 @@ function addItemBuscaPrimeiro() {
   const t = document.getElementById('pdv-busca').value, r = buscarProdutos(t);
   if (!t.trim()) { alert('Digite algo ou use Diversos.'); return; }
   if (!r.length) { openDiversosModalPelaBusca(); return; }
-  addItemBusca(r[0].id);
+  addItemBusca(r[Math.max(indiceBuscaSelecionado, 0)].id);
 }
 
 // ==========================================================
-// 15. PDV - PIZZA 2 SABORES E DIVERSOS
+// 16. PDV - PIZZA 2 SABORES E DIVERSOS
 // ==========================================================
 function saboresDePizza() {
-  return produtos.filter(p => (p.categoria || '').toLowerCase() === 'pizza' && p.codigo !== 'P02' && p.descricao !== 'Pizza 2 Sabores' && Number(p.estoque) > 0);
+  return produtos.filter(p => {
+    const cat = (p.categoria || '').toLowerCase();
+    const desc = (p.descricao || '').toLowerCase();
+    return cat === 'pizza' && !ehPizzaDoisSabores(p) && Number(p.estoque) > 0;
+  });
 }
 
 function abrirPizzaDoisSabores(quantidade) {
   const sabores = saboresDePizza();
-  if (sabores.length < 2) { alert('Cadastre pelo menos dois sabores de pizza.'); return; }
+  if (sabores.length < 2) { 
+    alert('Cadastre pelo menos dois sabores de pizza.'); 
+    return; 
+  }
+  // Usa o ID real do Firebase (string) como value
   const options = sabores.map(p => `<option value="${p.id}">${escapeHtml(p.descricao)} — ${fmt(p.precoVenda)}</option>`).join('');
   document.getElementById('pizza-sabor-1').innerHTML = options;
   document.getElementById('pizza-sabor-2').innerHTML = options;
@@ -785,32 +876,85 @@ function abrirPizzaDoisSabores(quantidade) {
   document.getElementById('modal-pizza-sabores').dataset.quantidade = quantidade;
   atualizarPizzaDoisSabores();
   document.getElementById('modal-pizza-sabores').classList.add('show');
+  setTimeout(() => document.getElementById('pizza-sabor-1').focus(), 60);
 }
 
 function atualizarPizzaDoisSabores() {
-  const p1 = produtoById(Number(document.getElementById('pizza-sabor-1')?.value));
-  const p2 = produtoById(Number(document.getElementById('pizza-sabor-2')?.value));
-  set('pizza-valor-final', fmt(Math.max(p1?.precoVenda || 0, p2?.precoVenda || 0)));
+  const select1 = document.getElementById('pizza-sabor-1');
+  const select2 = document.getElementById('pizza-sabor-2');
+  
+  if (!select1 || !select2) return;
+  
+  const valor1 = select1.value;
+  const valor2 = select2.value;
+  
+  console.log('Sabores selecionados:', valor1, valor2);
+  
+  // Remove o Number() - IDs do Firebase são strings!
+  const p1 = produtoById(valor1);
+  const p2 = produtoById(valor2);
+  
+  console.log('Produtos encontrados:', p1, p2);
+  
+  if (p1 && p2) {
+    const precoFinal = Math.max(p1.precoVenda || 0, p2.precoVenda || 0);
+    set('pizza-valor-final', fmt(precoFinal));
+  } else {
+    set('pizza-valor-final', fmt(0));
+  }
 }
 
 function adicionarPizzaDoisSabores() {
-  const p1 = produtoById(Number(document.getElementById('pizza-sabor-1').value));
-  const p2 = produtoById(Number(document.getElementById('pizza-sabor-2').value));
+  const select1 = document.getElementById('pizza-sabor-1');
+  const select2 = document.getElementById('pizza-sabor-2');
+  
+  const valor1 = select1?.value;
+  const valor2 = select2?.value;
+  
+  // Remove o Number() - IDs do Firebase são strings!
+  const p1 = produtoById(valor1);
+  const p2 = produtoById(valor2);
   const quantidade = Number(document.getElementById('modal-pizza-sabores').dataset.quantidade) || 1;
-  if (!p1 || !p2 || p1.id === p2.id) { alert('Escolha dois sabores diferentes.'); return; }
+  
+  console.log('Tentando adicionar pizza:', { p1, p2, valor1, valor2 });
+  
+  if (!p1 || !p2) { 
+    alert('Erro ao identificar os sabores. Tente novamente.'); 
+    return; 
+  }
+  
+  if (p1.id === p2.id) { 
+    alert('Escolha dois sabores diferentes.'); 
+    return; 
+  }
+  
   const preco = Math.max(p1.precoVenda, p2.precoVenda);
   const custo = Math.max(p1.precoCompra || 0, p2.precoCompra || 0);
   const descricao = `Pizza 2 Sabores: ${p1.descricao.replace(/^Pizza\s+/i, '')} + ${p2.descricao.replace(/^Pizza\s+/i, '')}`;
-  cart.push({ tipo: 'pizza2', codigo: 'P02', descricao, quantidade, valorUnitario: preco, custoUnitario: custo });
+  
+  cart.push({ 
+    tipo: 'pizza2', 
+    codigo: 'P02', 
+    descricao, 
+    quantidade, 
+    valorUnitario: preco, 
+    custoUnitario: custo, 
+    sabores: [p1.id, p2.id] 
+  });
+  
   mostrarUltimoItem(descricao, 'P02', preco, preco * quantidade);
-  closeModal('modal-pizza-sabores'); renderCart();
-  document.getElementById('pdv-busca').value = ''; document.getElementById('pdv-qtd').value = 1; focusScanner();
+  closeModal('modal-pizza-sabores'); 
+  renderCart();
+  document.getElementById('pdv-busca').value = ''; 
+  document.getElementById('pdv-qtd').value = 1; 
+  focusScanner();
 }
 
 function openDiversosModal() {
   ['diversos-descricao', 'diversos-valor'].forEach(i => document.getElementById(i).value = '');
   document.getElementById('diversos-qtd').value = 1;
   document.getElementById('modal-diversos').classList.add('show');
+  setTimeout(() => document.getElementById('diversos-descricao').focus(), 50);
 }
 
 function openDiversosModalPelaBusca() {
@@ -835,15 +979,13 @@ function adicionarItemDiversos() {
 function mostrarUltimoItem(desc, cod, unit, tot) {
   set('pdv-banner', desc.toUpperCase()); set('pdv-banner-un', 'UN');
   set('pdv-vlr-unit', fmt(unit)); set('pdv-tot-item', fmt(tot));
-  set('pdv-cod-int', cod || '—');
-  const p = produtos.find(x => (x.codigo || '') === String(cod)) || produtos.find(x => x.descricao === desc);
-  setFoto(p);
+  set('pdv-cod-int', cod || '—'); set('pdv-photo', '📦');
 }
 
 function mostrarVazio() {
   set('pdv-banner', caixaAberto() ? 'CAIXA ABERTO — AGUARDANDO PRODUTOS' : 'REALIZE A ABERTURA DO CAIXA');
   set('pdv-banner-un', ''); set('pdv-vlr-unit', fmt(0)); set('pdv-tot-item', fmt(0));
-  set('pdv-cod-int', '—'); setFoto(null);
+  set('pdv-cod-int', '—'); set('pdv-photo', '🛒');
 }
 
 function setFoto(p) {
@@ -859,6 +1001,7 @@ function abrirProdutosPDV() {
   el.innerHTML = categorias.map((categoria, index) => `<button class="categoria-pdv ${index === 0 ? 'selected' : ''}" onclick="mostrarProdutosCategoria('${escapeHtml(categoria)}',this)">${escapeHtml(categoria)}</button>`).join('');
   document.getElementById('modal-produtos-pdv').classList.add('show');
   mostrarProdutosCategoria(categorias[0] || 'Outros', el.querySelector('.categoria-pdv'));
+  setTimeout(() => el.querySelector('.categoria-pdv')?.focus(), 60);
 }
 
 function mostrarProdutosCategoria(categoria, botao) {
@@ -867,10 +1010,99 @@ function mostrarProdutosCategoria(categoria, botao) {
   const lista = document.getElementById('lista-produtos-pdv');
   if (!lista) return;
   const itens = produtos.filter(p => (p.categoria || 'Outros') === categoria);
-  lista.innerHTML = itens.map(p => `<button class="produto-pdv" onclick="selecionarProdutoPDV('${p.id}')"><span><b>${escapeHtml(p.descricao)}</b><small>${escapeHtml(p.codigo || '')} · ${p.estoque} un.</small></span><strong>${fmt(p.precoVenda)}</strong></button>`).join('') || '<div class="modal-hint">Nenhum produto.</div>';
+  lista.innerHTML = itens.map(p => `<button class="produto-pdv" onclick="selecionarProdutoPDV('${p.id}')">
+    <span><b>${escapeHtml(p.descricao)}</b><small>${escapeHtml(p.codigo || '')} · ${p.estoque} un.</small></span><strong>${fmt(p.precoVenda)}</strong>
+  </button>`).join('') || '<div class="modal-hint">Nenhum produto nesta categoria.</div>';
 }
 
+// CORREÇÃO: Navegação completa por setas no modal de produtos
+function navegarProdutosPDV(tecla) {
+  const modal = document.getElementById('modal-produtos-pdv');
+  if (!modal || !modal.classList.contains('show')) return false;
+  
+  const categorias = [...modal.querySelectorAll('.categoria-pdv')];
+  const produtosPDV = [...modal.querySelectorAll('.produto-pdv')];
+  const ativo = document.activeElement;
+  
+  const idxCat = categorias.indexOf(ativo);
+  const idxProd = produtosPDV.indexOf(ativo);
+
+  // Navegando entre CATEGORIAS (parte superior)
+  if (idxCat >= 0) {
+    if (tecla === 'ArrowRight') {
+      const prox = (idxCat + 1) % categorias.length;
+      categorias[prox].click();
+      setTimeout(() => categorias[prox].focus(), 50);
+      return true;
+    }
+    if (tecla === 'ArrowLeft') {
+      const prox = (idxCat - 1 + categorias.length) % categorias.length;
+      categorias[prox].click();
+      setTimeout(() => categorias[prox].focus(), 50);
+      return true;
+    }
+    if (tecla === 'ArrowDown' && produtosPDV.length > 0) {
+      produtosPDV[0].focus();
+      return true;
+    }
+    if (tecla === 'Enter') {
+      ativo.click();
+      return true;
+    }
+  }
+  
+  // Navegando entre PRODUTOS (parte inferior)
+  if (idxProd >= 0) {
+    if (tecla === 'ArrowUp') {
+      // Volta para a categoria selecionada
+      const catSelecionada = modal.querySelector('.categoria-pdv.selected');
+      if (catSelecionada) {
+        catSelecionada.focus();
+      } else if (categorias.length > 0) {
+        categorias[0].focus();
+      }
+      return true;
+    }
+    if (tecla === 'ArrowDown') {
+      if (idxProd < produtosPDV.length - 1) {
+        produtosPDV[idxProd + 1].focus();
+      }
+      return true;
+    }
+    if (tecla === 'ArrowLeft') {
+      if (idxProd > 0) {
+        produtosPDV[idxProd - 1].focus();
+      }
+      return true;
+    }
+    if (tecla === 'ArrowRight') {
+      if (idxProd < produtosPDV.length - 1) {
+        produtosPDV[idxProd + 1].focus();
+      }
+      return true;
+    }
+    if (tecla === 'Enter') {
+      ativo.click();
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// CORREÇÃO: Seleção de produto agora verifica pela descrição "Pizza 2 Sabores"
 function selecionarProdutoPDV(produtoId) {
+  const produto = produtoById(produtoId);
+  
+  if (ehPizzaDoisSabores(produto)) {
+    const quantidade = quantidadeInformada();
+    closeModal('modal-produtos-pdv');
+    setTimeout(() => {
+      abrirPizzaDoisSabores(quantidade);
+    }, 150);
+    return;
+  }
+  
   closeModal('modal-produtos-pdv');
   addItemBusca(produtoId);
 }
@@ -881,11 +1113,18 @@ function abrirDiversosPeloMenu() {
 }
 
 // ==========================================================
-// 16. PDV - PAINEL DE PAGAMENTO
+// 17. PDV - PAINEL DE PAGAMENTO E EXCLUSÃO
 // ==========================================================
 function abrirPainelPagamento() {
   const p = document.getElementById('erp-pay');
-  if (p) { p.style.display = 'flex'; renderCart(); setTimeout(() => { const op = document.querySelector('.pay-opt[data-pay="' + currentPay + '"]'); if (op) op.focus(); }, 60); }
+  if (p) { 
+    p.style.display = 'flex'; 
+    renderCart(); 
+    setTimeout(() => { 
+      const cpfInput = document.getElementById('pdv-cpf');
+      if (cpfInput) cpfInput.focus();
+    }, 60); 
+  }
 }
 
 function fecharPainelPagamento() {
@@ -909,8 +1148,47 @@ function atalhoFinalizar() {
   finalizeSale();
 }
 
+function removerUltimoItem() { abrirSelecaoExclusao(); }
+
+function abrirSelecaoExclusao() {
+  if (!cart.length) { setScannerStatus('Carrinho vazio.', true); return; }
+  const lista = document.getElementById('lista-excluir-itens');
+  if (!lista) return;
+  lista.innerHTML = cart.map((item, index) => {
+    const info = getCartInfo(item);
+    return `<button class="item-excluir" onclick="excluirUmaUnidade(${index})"><span><b>${index + 1}. ${escapeHtml(info.descricao)}</b><small>${info.codigo || '—'} · ${fmt(info.precoVenda)}</small></span><strong>${item.quantidade} un.</strong></button>`;
+  }).join('');
+  document.getElementById('modal-excluir-item').classList.add('show');
+  setTimeout(() => lista.querySelector('.item-excluir')?.focus(), 60);
+}
+
+function excluirUmaUnidade(index) {
+  const item = cart[index]; if (!item) return;
+  const descricao = getCartInfo(item).descricao;
+  
+  if (item.quantidade > 1) {
+    item.quantidade -= 1;
+  } else {
+    cart.splice(index, 1);
+  }
+  
+  closeModal('modal-excluir-item'); 
+  renderCart(); 
+  beep(false);
+  setScannerStatus('Removida 1 unidade: ' + descricao);
+}
+
+function ajustarQtdUltimo(d) {
+  if (!cart.length) return;
+  const it = cart[cart.length - 1], info = getCartInfo(it), nv = it.quantidade + d;
+  if (nv <= 0) cart.pop();
+  else if (it.tipo === 'produto' && nv > info.estoque) { beep(false); return; }
+  else it.quantidade = nv;
+  renderCart();
+}
+
 // ==========================================================
-// 17. CUPOM
+// 18. CUPOM
 // ==========================================================
 function abrirUltimoCupom() {
   if (!ultimaVenda) { alert('Nenhuma venda finalizada ainda.'); return; }
@@ -961,7 +1239,7 @@ function imprimirCupom(confirmar = true) {
 }
 
 // ==========================================================
-// 18. CAIXA
+// 19. CAIXA
 // ==========================================================
 function caixaAberto() { return caixaAtual && caixaAtual.status === 'aberto'; }
 
@@ -1065,7 +1343,7 @@ function confirmarFechamentoCaixa() {
 }
 
 // ==========================================================
-// 19. RELATÓRIOS
+// 20. RELATÓRIOS
 // ==========================================================
 function vendasDoDia() {
   const h = hojeStr();
@@ -1170,7 +1448,7 @@ function renderFechamento() {
 }
 
 // ==========================================================
-// 20. BACKUP E AUDITORIA
+// 21. BACKUP E AUDITORIA
 // ==========================================================
 function renderAuditoria() {
   if (!isAdmin) return;
@@ -1268,13 +1546,8 @@ async function executarEmLotes(itens, tamanhoLote, adicionarOperacao) {
   }
 }
 
-async function restaurarBackupLegado() {
-  if (!isAdmin) { alert('Acesso negado.'); return; }
-  alert('Função de restauração ainda não implementada para o Firebase. Use o painel do Firebase para importar dados.');
-}
-
 // ==========================================================
-// 21. NAVEGAÇÃO E BEEP
+// 22. NAVEGAÇÃO E BEEP
 // ==========================================================
 let audioCtx = null;
 function beep(ok) {
@@ -1312,7 +1585,7 @@ function refreshAll() {
 }
 
 // ==========================================================
-// 22. ATALHOS DE TECLADO
+// 23. ATALHOS DE TECLADO
 // ==========================================================
 function navegarFormaPagamento(direcao) {
   const opcoes = [...document.querySelectorAll('.pay-opt')];
@@ -1331,36 +1604,6 @@ function alternarPagamento() {
   setScannerStatus('Pagamento: ' + n);
 }
 
-function removerUltimoItem() { abrirSelecaoExclusao(); }
-
-function abrirSelecaoExclusao() {
-  if (!cart.length) { setScannerStatus('Carrinho vazio.', true); return; }
-  const lista = document.getElementById('lista-excluir-itens');
-  if (!lista) return;
-  lista.innerHTML = cart.map((item, index) => {
-    const info = getCartInfo(item);
-    return `<button class="item-excluir" onclick="excluirUmaUnidade(${index})"><span><b>${index + 1}. ${escapeHtml(info.descricao)}</b><small>${info.codigo || '—'} · ${fmt(info.precoVenda)}</small></span><strong>${item.quantidade} un.</strong></button>`;
-  }).join('');
-  document.getElementById('modal-excluir-item').classList.add('show');
-}
-
-function excluirUmaUnidade(index) {
-  const item = cart[index]; if (!item) return;
-  const descricao = getCartInfo(item).descricao;
-  if (item.quantidade > 1) item.quantidade -= 1; else cart.splice(index, 1);
-  closeModal('modal-excluir-item'); renderCart(); beep(false);
-  setScannerStatus('Removida 1 unidade: ' + descricao);
-}
-
-function ajustarQtdUltimo(d) {
-  if (!cart.length) return;
-  const it = cart[cart.length - 1], info = getCartInfo(it), nv = it.quantidade + d;
-  if (nv <= 0) cart.pop();
-  else if (it.tipo === 'produto' && nv > info.estoque) { beep(false); return; }
-  else it.quantidade = nv;
-  renderCart();
-}
-
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     const pay = document.getElementById('erp-pay');
@@ -1375,25 +1618,83 @@ document.addEventListener('keydown', function(e) {
   const alvo = e.target;
   const dig = alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.tagName === 'SELECT') && alvo.id !== 'pdv-scanner';
   
+  const modalProdutos = document.getElementById('modal-produtos-pdv');
+  if (modalProdutos && modalProdutos.classList.contains('show')) {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
+      e.preventDefault();
+      navegarProdutosPDV(e.key);
+      return;
+    }
+  }
+
+  const painelPagamento = document.getElementById('erp-pay');
+  if (painelPagamento && painelPagamento.style.display === 'flex') {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); navegarFormaPagamento(-1); return;
+    }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault(); navegarFormaPagamento(1); return;
+    }
+    if (e.key === 'Enter' && e.target.classList.contains('pay-opt')) {
+      e.preventDefault(); selectPay(e.target); return;
+    }
+  }
+  
+  const modalExclusao = document.getElementById('modal-excluir-item');
+  if (modalExclusao && modalExclusao.classList.contains('show')) {
+    const itens = [...modalExclusao.querySelectorAll('.item-excluir')];
+    const atual = itens.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (itens.length) {
+        const proximo = e.key === 'ArrowDown' ? (atual + 1) % itens.length : (atual - 1 + itens.length) % itens.length;
+        itens[proximo].focus();
+      }
+      return;
+    }
+    if (e.key === 'Enter' && itens.includes(document.activeElement)) {
+      e.preventDefault();
+      document.activeElement.click();
+      return;
+    }
+  }
+  
   switch (e.key) {
     case 'F1': e.preventDefault(); document.getElementById('modal-ajuda').classList.toggle('show'); break;
     case 'F2': e.preventDefault(); focusScanner(); break;
     case 'F3': e.preventDefault(); if (!modalAberto()) { const b = document.getElementById('pdv-busca'); if (b) b.focus(); } break;
     case 'F4': e.preventDefault(); atalhoFinalizar(); break;
     case 'F5': e.preventDefault(); if (!modalAberto()) openMovCaixa(); break;
-    case 'F6': e.preventDefault(); if (!modalAberto() && cart.length && confirm('Cancelar venda?')) { cart = []; renderCart(); beep(false); mostrarVazio(); setScannerStatus('Venda cancelada.'); } break;
-    case 'F7': e.preventDefault(); if (!modalAberto()) { if (e.ctrlKey) abrirProdutosPDV(); else openDiversosModal(); } break;
+    case 'F6': e.preventDefault();
+      if (!modalAberto() && cart.length && confirm('Cancelar todos os itens da venda atual?')) {
+        cart = []; renderCart(); beep(false); mostrarVazio(); setScannerStatus('Venda cancelada.');
+      } break;
+    case 'F7':
+      e.preventDefault();
+      if (!modalAberto()) {
+        if (e.ctrlKey) abrirProdutosPDV();
+        else openDiversosModal();
+      }
+      break;
     case 'F8': e.preventDefault(); if (!modalAberto()) removerUltimoItem(); break;
     case 'F9': e.preventDefault(); if (!modalAberto()) alternarPagamento(); break;
     case 'F10': e.preventDefault(); if (confirm('Sair do sistema?')) sair(); break;
     case 'F11': if (e.ctrlKey) { e.preventDefault(); if (!modalAberto()) abrirUltimoCupom(); } break;
-    case 'F12': e.preventDefault(); if (!modalAberto()) openFechamentoCaixa(); break;
+    case 'F12': 
+      e.preventDefault(); 
+      if (!modalAberto()) {
+        if (e.ctrlKey) {
+          openAberturaCaixa();
+        } else {
+          openFechamentoCaixa();
+        }
+      }
+      break;
     case '+': case '=': if (!dig && !modalAberto()) { e.preventDefault(); ajustarQtdUltimo(1); } break;
     case '-': case '_': if (!dig && !modalAberto()) { e.preventDefault(); ajustarQtdUltimo(-1); } break;
   }
 });
 
-// Enter confirma em modais
 (function() {
   function bind(id, fn) {
     const el = document.getElementById(id);
@@ -1401,13 +1702,15 @@ document.addEventListener('keydown', function(e) {
   }
   bind('caixa-fundo', abrirCaixa);
   bind('mov-caixa-valor', salvarMovCaixa);
+  bind('mov-caixa-motivo', salvarMovCaixa);
   bind('fecha-contado', confirmarFechamentoCaixa);
   bind('mve-qtd', salvarMovEstoque);
+  bind('mve-motivo', salvarMovEstoque);
   bind('pdv-valor-pago', atalhoFinalizar);
 })();
 
 // ==========================================================
-// 23. MENU EM ÁRVORE
+// 24. MENU EM ÁRVORE
 // ==========================================================
 function toggleTreeGroup(head) {
   const g = head.closest('.tree-group'); if (!g) return;
@@ -1446,27 +1749,75 @@ function filtrarTree() {
 }
 
 // ==========================================================
-// 24. INICIALIZAÇÃO DO PDV
+// 25. INICIALIZAÇÃO DO PDV
 // ==========================================================
 function setupPDVEvents() {
   const si = document.getElementById('pdv-scanner');
   if (si) {
     let scanDebounce = null;
-    si.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(scanDebounce); processarCodigoBarras(si.value); } });
-    si.addEventListener('input', () => { clearTimeout(scanDebounce); const v = si.value.trim(); if (ehCodigoBarras(v)) scanDebounce = setTimeout(() => processarCodigoBarras(v), 350); });
+    si.addEventListener('keydown', e => { 
+      if (e.key === 'Enter') { 
+        e.preventDefault(); 
+        clearTimeout(scanDebounce); 
+        processarCodigoBarras(si.value); 
+      } 
+    });
+    si.addEventListener('input', () => { 
+      clearTimeout(scanDebounce); 
+      const v = si.value.trim(); 
+      if (ehCodigoBarras(v)) scanDebounce = setTimeout(() => processarCodigoBarras(v), 350); 
+    });
   }
   
   const bi = document.getElementById('pdv-busca');
   if (bi) {
     bi.addEventListener('input', renderBuscaDropdown);
     bi.addEventListener('focus', renderBuscaDropdown);
+    
+    // NAVEGAÇÃO POR SETAS NO DROPDOWN
     bi.addEventListener('keydown', e => {
+      const dd = document.getElementById('pdv-busca-dropdown');
+      const resultados = buscarProdutos(bi.value).slice(0, 8);
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (resultados.length > 0) {
+          indiceBuscaSelecionado = (indiceBuscaSelecionado + 1) % resultados.length;
+          renderBuscaDropdown();
+        }
+        return;
+      }
+      
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (resultados.length > 0) {
+          indiceBuscaSelecionado = (indiceBuscaSelecionado - 1 + resultados.length) % resultados.length;
+          renderBuscaDropdown();
+        }
+        return;
+      }
+      
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (!ehCodigoBarras(bi.value)) addItemBuscaPrimeiro();
-        else { const dd = document.getElementById('pdv-busca-dropdown'); if (dd) dd.classList.remove('show'); processarCodigoBarras(bi.value); bi.value = ''; }
+        if (indiceBuscaSelecionado >= 0 && resultados[indiceBuscaSelecionado]) {
+          // Seleciona o produto destacado
+          addItemBusca(resultados[indiceBuscaSelecionado].id);
+        } else if (!ehCodigoBarras(bi.value)) {
+          // Se não há seleção, adiciona o primeiro
+          addItemBuscaPrimeiro();
+        } else {
+          // Se é código de barras, processa normalmente
+          if (dd) dd.classList.remove('show');
+          processarCodigoBarras(bi.value);
+          bi.value = '';
+        }
+        return;
       }
-      if (e.key === 'Escape') { const dd = document.getElementById('pdv-busca-dropdown'); if (dd) dd.classList.remove('show'); }
+      
+      if (e.key === 'Escape') { 
+        if (dd) dd.classList.remove('show');
+        indiceBuscaSelecionado = -1;
+      }
     });
   }
   
@@ -1474,13 +1825,15 @@ function setupPDVEvents() {
     const pdv = document.getElementById('page-pdv');
     if (!pdv || !pdv.classList.contains('active')) return;
     const dd = document.getElementById('pdv-busca-dropdown');
-    if (dd && !e.target.closest('.busca-wrap')) dd.classList.remove('show');
+    if (dd && !e.target.closest('.busca-wrap')) {
+      dd.classList.remove('show');
+      indiceBuscaSelecionado = -1;
+    }
     const t = e.target.tagName;
     if (!(t === 'INPUT' || t === 'SELECT' || t === 'BUTTON' || t === 'OPTION')) focusScanner();
   });
 }
 
-// Focus guard
 function setupFocusGuard() {
   setInterval(function() {
     const pdv = document.getElementById('page-pdv');
@@ -1495,7 +1848,6 @@ function setupFocusGuard() {
   }, 400);
 }
 
-// Inicialização
 set('sb-data', new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }));
 
 if (document.readyState === 'loading') {
@@ -1510,7 +1862,6 @@ if (document.readyState === 'loading') {
   setScannerStatus('Aguardando leitura...');
 }
 
-// Capitalização automática em inputs
 document.addEventListener('input', e => {
   const campo = e.target;
   if (!(campo instanceof HTMLInputElement || campo instanceof HTMLTextAreaElement)) return;
@@ -1519,8 +1870,6 @@ document.addEventListener('input', e => {
   campo.value = campo.value.toLocaleUpperCase('pt-BR');
   if (inicio !== null) campo.setSelectionRange(inicio, inicio);
 });
-
-console.log('[Padoca do Véio] Sistema carregado com Firebase.');
 
 function openUsuarioModal(uid) {
   if (!isAdmin) return;
@@ -1564,7 +1913,6 @@ function renderUsuarios() {
   tabela.innerHTML = usuarios.map(usuario => `<tr><td>${usuario.uid.slice(0, 8)}</td><td><b>${usuario.nome || 'Sem nome'}</b></td><td>${usuario.email || '—'}</td><td>${usuario.role === 'admin' ? 'ADMINISTRADOR' : 'OPERADOR'}</td><td><button class="btn secondary small" onclick="openUsuarioModal('${usuario.uid}')">Editar</button></td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nenhum usuário encontrado.</td></tr>';
 }
 
-// O arquivo é um módulo ES. Expomos as funções usadas pelos onclick do HTML.
 Object.assign(window, {
   sair, irPara, alternarMenuLateral, toggleTreeGroup, expandirTree, filtrarTree, closeModal,
   openProdutoModal, salvarProduto, excluirProduto, openFornecedorModal, salvarFornecedor, excluirFornecedor,
@@ -1573,6 +1921,19 @@ Object.assign(window, {
   abrirDiversosPeloMenu, adicionarItemDiversos, adicionarPizzaDoisSabores, atualizarPizzaDoisSabores,
   selectPay, calcularTroco, atalhoFinalizar, abrirCaixa, openAberturaCaixa, openMovCaixa,
   salvarMovCaixa, openFechamentoCaixa, confirmarFechamentoCaixa, calcDiferenca, imprimirCupom,
-  exportarBackup, restaurarBackup, renderAuditoria
-  , openUsuarioModal, salvarUsuario
+  exportarBackup, restaurarBackup, renderAuditoria, openUsuarioModal, salvarUsuario,
+  excluirUmaUnidade, navegarProdutosPDV, mostrarProdutosCategoria
 });
+Object.assign(window, {
+  sair, irPara, alternarMenuLateral, toggleTreeGroup, expandirTree, filtrarTree, closeModal,
+  openProdutoModal, salvarProduto, excluirProduto, openFornecedorModal, salvarFornecedor, excluirFornecedor,
+  registrarEntrada, excluirEntrada, openMovEstoque, salvarMovEstoque, renderRelatorioCompras,
+  renderRelatorioVendas, renderRelatorioEstoque, abrirUltimoCupom, abrirProdutosPDV,
+  abrirDiversosPeloMenu, adicionarItemDiversos, adicionarPizzaDoisSabores, atualizarPizzaDoisSabores,
+  selectPay, calcularTroco, atalhoFinalizar, abrirCaixa, openAberturaCaixa, openMovCaixa,
+  salvarMovCaixa, openFechamentoCaixa, confirmarFechamentoCaixa, calcDiferenca, imprimirCupom,
+  exportarBackup, restaurarBackup, renderAuditoria, openUsuarioModal, salvarUsuario,
+  excluirUmaUnidade, navegarProdutosPDV, mostrarProdutosCategoria, selecionarProdutoPDV
+});
+
+console.log('[Padoca do Véio] Sistema carregado com Firebase.');
