@@ -1860,3 +1860,84 @@ body {
 .card {
   overflow-x: auto;
 }
+/* ============================================
+   CORREÇÃO: Dropdown de busca sobrepondo tudo
+   ============================================ */
+
+/* Garante que o container da busca fique acima dos outros elementos */
+.busca-wrap {
+  position: relative;
+  z-index: 100 !important;
+}
+
+/* Dropdown com z-index altíssimo para sobrepor tudo */
+.busca-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  z-index: 1000 !important;
+  max-height: 280px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: 0 10px 40px rgba(13, 54, 99, 0.4);
+  margin-top: 4px;
+}
+
+/* Quando estiver visível, garante que apareça */
+.busca-dropdown.show {
+  display: block !important;
+}
+
+/* Permite que o dropdown "vaze" para fora do container */
+.erp-grid {
+  overflow: visible !important;
+}
+
+/* Mantém o scroll apenas no lado direito (lista de produtos) */
+.erp-right {
+  overflow: hidden;
+}
+
+.erp-list-body {
+  overflow-y: auto;
+}
+
+/* Estilo dos itens do dropdown para ficar mais legível */
+.busca-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+  transition: all 0.15s;
+}
+
+.busca-item:hover {
+  background: var(--erp-blue-light);
+}
+
+.busca-item.selected {
+  background: var(--erp-blue-light);
+  border-left: 3px solid var(--amber);
+}
+
+.busca-item:last-child {
+  border-bottom: none;
+}
+
+.busca-diversos {
+  background: #FBEBD2;
+  font-weight: 700;
+  color: #8a5c14;
+}
+
+.busca-diversos:hover {
+  background: #f5deb3;
+}
